@@ -44,13 +44,15 @@ This reduces manual screening time, increases accuracy, and provides students wi
 ## 📂 Project Structure
 ```
 
-resume-screening-system/
+jobfit-ai/
+
 │── backend/
 │   ├── app.py              # Flask API entry point
 │   ├── models/             # ML/NLP models
 │   ├── utils/              # Parsing & scoring helpers
 │   ├── requirements.txt    # Backend dependencies
 │
+
 │── frontend/
 │   ├── streamlit\_app.py    # Streamlit dashboard
 │   ├── pages/              # Extra pages (Upload, Dashboard, Details)
