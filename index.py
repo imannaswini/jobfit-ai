@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import random
 import os
+import smtplib # This library is for sending emails. Actual implementation would require configuration.
+from email.message import EmailMessage
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -470,6 +472,13 @@ def view_student_profile_page():
         st.rerun()
 
 # --- Authentication Logic (Simulated) ---
+def redirect_to_login():
+    st.session_state.login_state = 'login'
+    st.rerun()
+
+def redirect_to_signup():
+    st.session_state.login_state = 'signup'
+    st.rerun()
 
 def show_login_page():
     st.title("Login to AI Recruitment Matcher 🤖")
@@ -482,7 +491,7 @@ def show_login_page():
         login_button = st.form_submit_button("Log In", type="primary", use_container_width=True)
     
     if login_button:
-        if email == st.session_state.user_data['email'] and password == st.session_state.user_data['password']:
+        if st.session_state.get('user_data') and email == st.session_state.user_data['email'] and password == st.session_state.user_data['password']:
             st.session_state.logged_in = True
             st.session_state.user_role = st.session_state.user_data['role']
             st.success("Login successful! Redirecting to your dashboard...")
@@ -491,227 +500,70 @@ def show_login_page():
             st.error("Invalid email or password.")
     
     st.markdown("---")
-    st.markdown("Don't have an account? [Sign Up](#sign-up-page)")
-
-def show_signup_page():
-    st.markdown('<div class="signup-form">', unsafe_allow_html=True)
-    st.markdown('<h2 class="signup-header">Create Your Account 🎉</h2>', unsafe_allow_html=True)
-    st.markdown("---")
-    
-    st.subheader("1. Select Your Role")
-    role = st.radio("I am a:", ("Recruiter", "Student"), key="signup_role")
-    
-    st.subheader(f"2. Enter Your Details")
-    with st.form("signup_form"):
-        name = st.text_input("Full Name")
-        email = st.text_input("Email ID")
-        password = st.text_input("Create Password", type="password")
-        gender = st.selectbox("Gender", ["Prefer not to say", "Male", "Female", "Other"])
-
-        if role == "Recruiter":
-            st.info("Please provide your company details.")
-            company = st.text_input("Company Name")
-            designation = st.text_input("Designation")
-            linkedin = st.text_input("LinkedIn Profile URL (Optional)")
-            
-        else: # Student
-            st.info("Tell us a bit about your professional and academic background.")
-            contact_number = st.text_input("Contact Number")
-            bio = st.text_area("Write a short professional bio (e.g., Aspiring Data Scientist with...)", height=150)
-            linkedin = st.text_input("LinkedIn Profile URL (Optional)")
-            
-        signup_button = st.form_submit_button("Sign Up", type="primary", use_container_width=True)
-
-    if signup_button:
-        if name and email and password:
-            st.session_state.user_data = {
-                'name': name,
-                'email': email,
-                'password': password,
-                'role': role,
-                'gender': gender
-            }
-            if role == "Recruiter":
-                st.session_state.user_data.update({'company': company, 'designation': designation, 'linkedin': linkedin})
-            else:
-                st.session_state.user_data.update({'bio': bio, 'linkedin': linkedin, 'contact_number': contact_number})
-            
-            st.success(f"Account for {role} created successfully! Redirecting to your dashboard...")
-            st.session_state.logged_in = True
-            st.session_state.user_role = role
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("Don't have an account?")
+        if st.button("Sign Up", key="login_signup_button", use_container_width=True):
+            redirect_to_signup()
+    with col2:
+        if st.button("Forgot Password?", key="forgot_password_button", use_container_width=True):
+            st.session_state.login_state = 'forgot_password'
             st.rerun()
-        else:
-            st.error("Please fill in all required fields.")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-    
+            
+def show_forgot_password_page():
+    st.title("Forgot Password? 🤔")
     st.markdown("---")
-    st.markdown("Already have an account? [Log In](#log-in-page)")
-
-# --- Main App Logic ---
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'show_login' not in st.session_state:
-    st.session_state.show_login = False
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = None
-if 'user_data' not in st.session_state:
-    st.session_state.user_data = {}
-if 'student_page' not in st.session_state:
-    st.session_state.student_page = "job_listings"
-if 'recruiter_page' not in st.session_state:
-    st.session_state.recruiter_page = "explore_students"
-if 'student_notifications' not in st.session_state:
-    st.session_state.student_notifications = []
-if 'live_sessions' not in st.session_state:
-    st.session_state.live_sessions = [{'id': 1, 'title': 'Q&A with TechCorp Hiring Team', 'date': 'Sep 25', 'time': '11:00 AM', 'status': 'Upcoming', 'messages': []}]
-if 'live_chat' not in st.session_state:
-    st.session_state.live_chat = []
-if 'interview_schedule' not in st.session_state:
-    st.session_state.interview_schedule = []
-
-# --- Live Chat Functions ---
-def live_chat_page(session_id):
-    session = next((s for s in st.session_state.live_sessions if s['id'] == session_id), None)
-    if not session:
-        st.error("Live session not found.")
-        return
+    st.info("Enter your registered email or contact number to receive a one-time password (OTP).")
+    
+    with st.form("forgot_password_form"):
+        contact_info = st.text_input("Registered Email or Contact Number")
+        send_otp_button = st.form_submit_button("Send OTP", type="primary")
         
-    st.title(f"Live Session: {session['title']}")
-    st.markdown("---")
-
-    # Chat display area
-    chat_container = st.container(height=300, border=True)
-    for message in st.session_state.live_chat:
-        if message['role'] == 'recruiter':
-            chat_container.info(f"**{session['recruiter']}:** {message['text']}")
-        else:
-            chat_container.markdown(f"**You:** {message['text']}")
-    
-    st.markdown("---")
-    
-    # Message input area
-    with st.form("chat_form", clear_on_submit=True):
-        new_message = st.text_input("Type your message...", key="message_input")
-        send_button = st.form_submit_button("Send")
-        if send_button and new_message:
-            st.session_state.live_chat.append({'role': 'student', 'text': new_message})
-            st.rerun()
-
-# --- Recruiter Communication Pages ---
-def manage_qa_page():
-    st.title("Manage Q&A Sessions 💬")
-    st.markdown("### Answer student questions about your job postings.")
-    st.markdown("---")
-    
-    for job in job_listings:
-        if st.session_state.get('job_questions') and job['id'] in st.session_state.job_questions:
-            questions = st.session_state.job_questions[job['id']]
-            unanswered_count = sum(1 for q in questions if not q['answer'])
-            
-            if unanswered_count > 0:
-                with st.expander(f"**{job['title']}** ({unanswered_count} new questions)", expanded=True):
-                    for qa in questions:
-                        st.markdown(f"**Q:** {qa['question']}")
-                        if qa['answer']:
-                            st.info(f"**A:** {qa['answer']}")
-                        else:
-                            with st.form(f"answer_form_{qa['question']}"):
-                                answer = st.text_area("Your answer:", key=f"answer_box_{qa['question']}")
-                                submit_answer = st.form_submit_button("Post Answer")
-                                if submit_answer and answer:
-                                    qa['answer'] = answer
-                                    st.success("Answer posted!")
-                                    st.rerun()
-                                st.warning("Awaiting your answer...")
-
-def recruiter_live_sessions():
-    st.title("Manage Live Sessions 🗣️")
-    st.markdown("### Schedule and host live Q&A sessions for students.")
-    st.markdown("---")
-    
-    st.subheader("Schedule a New Session")
-    with st.form("new_session_form"):
-        title = st.text_input("Session Title")
-        date = st.date_input("Date")
-        time = st.time_input("Time")
-        schedule_button = st.form_submit_button("Schedule Session", type="primary")
-        if schedule_button:
-            new_id = len(st.session_state.live_sessions) + 1
-            st.session_state.live_sessions.append({'id': new_id, 'title': title, 'date': date, 'time': time, 'status': 'Upcoming', 'recruiter': st.session_state.user_data['name'], 'messages': []})
-            st.success("Session scheduled!")
-    
-    st.subheader("Your Upcoming Sessions")
-    for session in st.session_state.live_sessions:
-        with st.container(border=True):
-            st.markdown(f"**{session['title']}**")
-            st.caption(f"🗓️ {session['date']} at {session['time']}")
-            st.button(f"Start Session", key=f"start_{session['id']}")
-
-def student_live_sessions():
-    st.title("Upcoming Live Sessions 🗣️")
-    st.markdown("### Join live Q&A sessions with recruiters.")
-    st.markdown("---")
-    
-    for session in st.session_state.live_sessions:
-        with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.subheader(session['title'])
-                st.caption(f"Host: {session.get('recruiter', 'Recruiter')} | 🗓️ {session['date']} at {session['time']}")
-            with col2:
-                if st.button("Join Now", key=f"join_{session['id']}", use_container_width=True):
-                    st.session_state.student_page = "live_chat"
-                    st.session_state.current_session_id = session['id']
-                    st.rerun()
-
-# --- Student Interview Scheduling ---
-def student_interviews_page():
-    st.title("My Interviews 🗓️")
-    st.markdown("### Congratulations! Here are your scheduled and pending interviews.")
-    st.markdown("---")
-
-    if not st.session_state.interview_schedule:
-        st.info("You don't have any pending interviews at the moment.")
-    else:
-        for interview in st.session_state.interview_schedule:
-            with st.container(border=True):
-                st.success(f"**{interview['job_title']}** at **{interview['company']}**")
-                st.markdown(f"**Status:** Accepted 🎉")
-                st.markdown("Please choose an interview slot below.")
-                
-                selected_slot = st.selectbox("Select a slot:", ["Select...", "Oct 1, 10:00 AM", "Oct 2, 02:00 PM", "Oct 3, 09:30 AM"])
-                if st.button("Confirm Slot", key=f"confirm_{interview['job_title']}", type="primary"):
-                    if selected_slot != "Select...":
-                        st.success(f"You have confirmed your interview for **{selected_slot}** with **{interview['company']}**.")
-                        st.session_state.interview_schedule.remove(interview) # Remove from pending list
-                        st.balloons()
-                    else:
-                        st.error("Please select a valid slot.")
-
-# --- Authentication Logic (Simulated) ---
-
-def show_login_page():
-    st.title("Login to AI Recruitment Matcher 🤖")
-    st.markdown("---")
-    st.subheader("Welcome back!")
-
-    with st.form("login_form"):
-        email = st.text_input("Email ID", placeholder="Enter your email")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        login_button = st.form_submit_button("Log In", type="primary", use_container_width=True)
-    
-    if login_button:
-        if email == st.session_state.user_data['email'] and password == st.session_state.user_data['password']:
-            st.session_state.logged_in = True
-            st.session_state.user_role = st.session_state.user_data['role']
-            st.success("Login successful! Redirecting to your dashboard...")
+    if send_otp_button:
+        if contact_info == st.session_state.user_data['email'] or contact_info == st.session_state.user_data.get('contact_number'):
+            otp = random.randint(100000, 999999)
+            st.session_state.otp = otp
+            st.success(f"OTP sent to {contact_info}! Your OTP is: **{otp}** (Simulated)")
+            st.session_state.login_state = 'verify_otp'
             st.rerun()
         else:
-            st.error("Invalid email or password.")
-    
+            st.error("Could not find an account with that information.")
+
+def show_verify_otp_page():
+    st.title("Verify OTP 🔐")
     st.markdown("---")
-    st.markdown("Don't have an account? [Sign Up](#sign-up-page)")
+    st.info(f"An OTP has been sent. Please enter it below.")
+    
+    with st.form("verify_otp_form"):
+        otp_input = st.text_input("Enter OTP", type="password")
+        verify_button = st.form_submit_button("Verify", type="primary")
+        
+    if verify_button:
+        if otp_input == str(st.session_state.otp):
+            st.success("OTP verified successfully!")
+            st.session_state.login_state = 'reset_password'
+            st.rerun()
+        else:
+            st.error("Invalid OTP. Please try again.")
+
+def show_reset_password_page():
+    st.title("Reset Password 🔑")
+    st.markdown("---")
+    st.info("Please enter your new password.")
+    
+    with st.form("reset_password_form"):
+        new_password = st.text_input("New Password", type="password")
+        confirm_password = st.text_input("Confirm New Password", type="password")
+        reset_button = st.form_submit_button("Reset Password", type="primary")
+        
+    if reset_button:
+        if new_password == confirm_password and new_password:
+            st.session_state.user_data['password'] = new_password
+            st.success("Password reset successfully! You can now log in with your new password.")
+            st.session_state.login_state = 'login'
+            st.rerun()
+        else:
+            st.error("Passwords do not match or are empty. Please try again.")
 
 def show_signup_page():
     st.markdown('<div class="signup-form">', unsafe_allow_html=True)
@@ -766,13 +618,16 @@ def show_signup_page():
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")
-    st.markdown("Already have an account? [Log In](#log-in-page)")
+    st.markdown("Already have an account?")
+    if st.button("Log In", key="signup_login_button"):
+        redirect_to_login()
+
 
 # --- Main App Logic ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if 'show_login' not in st.session_state:
-    st.session_state.show_login = False
+if 'login_state' not in st.session_state:
+    st.session_state.login_state = 'signup' # 'signup', 'login', 'forgot_password', 'verify_otp', 'reset_password'
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'user_data' not in st.session_state:
@@ -799,7 +654,7 @@ if st.session_state.logged_in:
     st.sidebar.markdown(f"**Role:** {st.session_state.user_data['role']}")
     if st.sidebar.button("Logout", use_container_width=True):
         st.session_state.logged_in = False
-        st.session_state.show_login = False
+        st.session_state.login_state = 'login'
         st.rerun()
     
     if st.session_state.user_role == "Recruiter":
@@ -824,14 +679,12 @@ if st.session_state.logged_in:
         st.sidebar.markdown("---")
         student_nav = st.sidebar.radio("Navigation", ["Job Opportunities", "My Profile", "Live Sessions", "My Interviews"], key="student_nav")
         
-        # Display notifications to the student
         if st.session_state.student_notifications:
             st.subheader("Your Notifications 🔔")
             for notification in st.session_state.student_notifications:
-                # Assuming 'Rahul Sharma' (id 1) is the logged-in student for this example
                 if notification['status'] == 'Accepted' and notification['student_id'] == 1:
                     st.success(f"**Congratulations! 🎉** You have been selected for the **{notification['job_title']}** role by **{notification['company']}**! Please check your **My Interviews** tab to schedule your interview.")
-            st.session_state.student_notifications = [] # Clear after showing
+            st.session_state.student_notifications = []
         
         if student_nav == "Job Opportunities":
             if st.session_state.student_page == "job_listings":
@@ -849,7 +702,13 @@ if st.session_state.logged_in:
             student_interviews_page()
             
 else:
-    if st.session_state.show_login:
+    if st.session_state.login_state == 'login':
         show_login_page()
-    else:
+    elif st.session_state.login_state == 'forgot_password':
+        show_forgot_password_page()
+    elif st.session_state.login_state == 'verify_otp':
+        show_verify_otp_page()
+    elif st.session_state.login_state == 'reset_password':
+        show_reset_password_page()
+    else: # Default is signup page
         show_signup_page()
