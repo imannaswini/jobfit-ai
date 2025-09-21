@@ -11,6 +11,8 @@ import io
 from docx import Document
 import pdfplumber
 import re
+import json
+import ast
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -20,83 +22,146 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Custom CSS for Styling ---
+# --- Professional Custom CSS for Styling ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    .st-emotion-cache-18ni7ap.e8zbici2 {
-        background: linear-gradient(to right, #00C6FF, #0072FF);
-        color: white;
+    /* Global Styles */
+    .stApp {
+        background: #f8fafc;
     }
-    .main-header {
-        font-family: 'Poppins', sans-serif;
+    
+    .main .block-container {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Typography */
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    h1, h2, h3 {
+        color: #1a202c;
+        font-weight: 600;
+    }
+
+    /* Home Page Styles */
+    .hero-section {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px;
+        margin-bottom: 3rem;
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
         font-weight: 700;
-         
-        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.3rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+    
+    .role-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    
+    .role-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        border-color: #667eea;
+    }
+    
+    .role-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .role-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2d3748;
         margin-bottom: 0.5rem;
     }
-    h1, h2, h3, h4, h5, h6, .st-emotion-cache-1j02r3h.e16109c0 {
-        font-family: 'Poppins', sans-serif;
+    
+    .role-description {
+        color: #4a5568;
+        font-size: 1rem;
+    }
+
+    /* Clean Card Styles */
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+    }
+    
+    .card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    /* Button Styles */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+
+    /* Form Styles */
+    .auth-container {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .auth-title {
+        font-size: 2rem;
         font-weight: 600;
-        color: #2D3748;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
     }
-    .st-emotion-cache-13ln4j9.e1629p8r2 {
-        font-family: 'Roboto Mono', monospace;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #000000;
+    
+    .auth-subtitle {
+        color: #4a5568;
+        font-size: 1rem;
     }
-    .st-emotion-cache-1aw8v5k.e1f1d6gn4 {
-        border-color: #0072FF;
-    }
-    .st-emotion-cache-1v04719.e1f1d6gn0 {
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .st-emotion-cache-v0g6wz.e1f1d6gn0 {
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .st-emotion-cache-5rimss.e1nzilvr4 {
-        border-radius: 10px;
-    }
-    .metric-card {
-        background-color: #F8F9FA;
-        border: 1px solid #E2E8F0;
-        border-radius: 0.75rem;
-        padding: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        text-align: center;
-        transition: transform 0.2s;
-        font-family: 'Poppins', sans-serif;
-    }
-    .metric-card:hover {
-        transform: translateY(-5px);
-    }
-    .verdict-high { background-color: #D4EDDA; color: #155724; padding: 0.35rem 1rem; border-radius: 9999px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; }
-    .verdict-medium { background-color: #FFF3CD; color: #856404; padding: 0.35rem 1rem; border-radius: 9999px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; }
-    .verdict-low { background-color: #F8D7DA; color: #721C24; padding: 0.35rem 1rem; border-radius: 9999px; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 0.5rem; }
-    .ats-friendly { background-color: #D1FAE5; color: #065F46; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 500; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem; }
-    .ats-unfriendly { background-color: #FEE2E2; color: #991B1B; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 500; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.25rem; }
-    .skill-matched { background-color: #E0F2FE; color: #0C4A6E; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 500; }
-    .skill-missing { background-color: #FFE4E6; color: #9F1239; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 500; }
-    .st-emotion-cache-1wv43z8.e1f1d6gn2 {
-        font-family: 'Poppins', sans-serif;
-    }
-    .signup-form {
-        background-color: #ffffff;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        max-width: 600px;
-        margin: auto;
-    }
-    .signup-header {
-        text-align: center;
-        margin-bottom: 20px;
-        color: #0072FF;
-    }
+
+    /* Hide Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -211,7 +276,7 @@ def add_job(job_data):
         job_data.get('location', ''),
         job_data.get('job_type', ''),
         job_data.get('eligibility', ''),
-        str(job_data.get('criteria', [])), # Store list as a string
+        json.dumps(job_data.get('criteria', [])), # Store list as JSON string
         job_data.get('date_posted', ''),
         job_data.get('applications', 0)
     ))
@@ -229,6 +294,20 @@ def get_job_listings():
     # Convert records to a list of dictionaries
     jobs = []
     for job in job_records:
+        # Safely parse criteria field
+        criteria = []
+        if job[6]:  # Check if criteria field is not None or empty
+            try:
+                # Try to parse as JSON first
+                criteria = json.loads(job[6])
+            except (json.JSONDecodeError, TypeError):
+                try:
+                    # Fallback to ast.literal_eval for Python literals
+                    criteria = ast.literal_eval(job[6])
+                except (ValueError, SyntaxError, TypeError):
+                    # If all else fails, treat as comma-separated string
+                    criteria = [item.strip() for item in str(job[6]).split(',') if item.strip()]
+        
         jobs.append({
             'id': job[0],
             'title': job[1],
@@ -236,10 +315,10 @@ def get_job_listings():
             'location': job[3],
             'job_type': job[4],
             'eligibility': job[5],
-            'criteria': eval(job[6]), # Convert criteria string back to list
+            'criteria': criteria,
             'datePosted': job[7],
             'applications': job[8],
-            'shortlisted': random.randint(0, job[8]) # Simulated value
+            'shortlisted': random.randint(0, job[8]) if job[8] > 0 else 0 # Simulated value
         })
     return jobs
 
@@ -318,7 +397,42 @@ def get_job_info_page(job_id):
         st.markdown("---")
         col_enroll, col_back = st.columns(2)
         if col_enroll.button("Enroll for this Job", use_container_width=True, type="primary"):
-            st.success("You have successfully enrolled for this job!")
+            # Initialize enrolled students list if it doesn't exist
+            if 'enrolled_students' not in st.session_state:
+                st.session_state.enrolled_students = []
+            
+            # Create enrollment record
+            enrollment = {
+                'student_id': st.session_state.user_data['id'],
+                'student_name': st.session_state.user_data['name'],
+                'student_email': st.session_state.user_data['email'],
+                'student_bio': st.session_state.user_data.get('bio', ''),
+                'student_contact': st.session_state.user_data.get('contact_number', ''),
+                'job_id': job['id'],
+                'job_title': job['title'],
+                'company': job['company'],
+                'score': score,
+                'matched_skills': matched_skills,
+                'missing_skills': missing_skills,
+                'ats_friendly': score > 60,
+                'enrollment_date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'Applied'
+            }
+            
+            # Check if already enrolled
+            already_enrolled = any(
+                e['student_id'] == st.session_state.user_data['id'] and e['job_id'] == job['id']
+                for e in st.session_state.enrolled_students
+            )
+            
+            if not already_enrolled:
+                st.session_state.enrolled_students.append(enrollment)
+                st.success("You have successfully enrolled for this job!")
+                # Navigate back to job opportunities
+                st.session_state.student_page = "job_listings"
+                st.rerun()
+            else:
+                st.warning("You have already enrolled for this job!")
         
         if col_back.button("⬅️ Back to Job Listings", use_container_width=True):
             st.session_state.student_page = "job_listings"
@@ -352,108 +466,223 @@ def get_job_info_page(job_id):
             st.warning("Awaiting answer from recruiter.")
 
 def recruiter_dashboard():
-    st.title("Recruiter Dashboard 📈")
-    st.markdown("### Welcome, Recruiter!")
-    st.markdown("---")
+    # Enhanced header with welcome message
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="font-size: 3.5rem; margin-bottom: 0.5rem;">📈 Recruiter Dashboard</h1>
+        <p style="font-size: 1.3rem; color: #4a5568; margin: 0;">Welcome back, {st.session_state.user_data.get('name', 'Recruiter')}! 👋</p>
+        <p style="font-size: 1rem; color: #718096; margin-top: 0.5rem;">Here's your recruitment overview and analytics</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     job_listings = get_job_listings()
-    total_apps = sum(job['applications'] for job in job_listings) if job_listings else 0
-    total_shortlisted = sum(job['shortlisted'] for job in job_listings) if job_listings else 0
-    avg_score = round(random.randint(70,90))
+    enrolled_students = st.session_state.get('enrolled_students', [])
+    total_apps = len(enrolled_students)
+    total_shortlisted = len([s for s in enrolled_students if s.get('status') == 'Accepted'])
+    avg_score = sum(s.get('score', 0) for s in enrolled_students) // len(enrolled_students) if enrolled_students else 0
 
-    st.subheader("Key Metrics")
-    st.markdown("Here's a quick overview of our current hiring pipeline and student performance.")
+    # Enhanced metrics section
+    st.markdown("""
+    <div style="margin-bottom: 2rem;">
+        <h2 style="color: #2d3748; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            📊 Key Performance Metrics
+        </h2>
+        <p style="color: #4a5568; margin-bottom: 2rem;">Real-time insights into your recruitment pipeline and candidate performance</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        with st.container(border=True):
-            st.markdown("<p class='metric-card'>🏢 Active Jobs<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(len(job_listings)), unsafe_allow_html=True)
-            st.caption("Total jobs currently posted.")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🏢</div>
+            <h2 style="font-family: 'Inter', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; color: #2d3748;">{len(job_listings)}</h2>
+            <p style="color: #4a5568; margin: 0; font-weight: 500;">Active Jobs</p>
+            <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">Currently posted positions</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        with st.container(border=True):
-            st.markdown("<p class='metric-card'>✉️ Total Applications<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(f"{total_apps:,}"), unsafe_allow_html=True)
-            st.caption("Total resumes received across all jobs.")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📝</div>
+            <h2 style="font-family: 'Inter', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; color: #2d3748;">{total_apps}</h2>
+            <p style="color: #4a5568; margin: 0; font-weight: 500;">Applications</p>
+            <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">Total resumes received</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col3:
-        with st.container(border=True):
-            st.markdown("<p class='metric-card'>🏅 Shortlisted<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(total_shortlisted), unsafe_allow_html=True)
-            st.caption("Candidates forwarded for interviews.")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✅</div>
+            <h2 style="font-family: 'Inter', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; color: #2d3748;">{total_shortlisted}</h2>
+            <p style="color: #4a5568; margin: 0; font-weight: 500;">Accepted</p>
+            <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">Candidates selected</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col4:
-        with st.container(border=True):
-            st.markdown("<p class='metric-card'>⭐ Avg. Score<br><h2 style='font-family: Roboto Mono;'>{}%</h2></p>".format(avg_score), unsafe_allow_html=True)
-            st.caption("Average resume relevance score.")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⭐</div>
+            <h2 style="font-family: 'Inter', sans-serif; font-size: 2.5rem; margin: 0.5rem 0; color: #2d3748;">{avg_score}%</h2>
+            <p style="color: #4a5568; margin: 0; font-weight: 500;">Avg. Score</p>
+            <p style="color: #718096; font-size: 0.9rem; margin-top: 0.5rem;">Resume relevance score</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.subheader("Manage Job Postings")
-    with st.container(border=True):
-        st.markdown("Upload a new Job Description to analyze student resumes and find the best fit.")
-        uploaded_file = st.file_uploader("Upload JD (PDF, DOCX)", type=['pdf', 'docx'])
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    # Enhanced job posting section
+    st.markdown("""
+    <div style="margin-bottom: 2rem;">
+        <h2 style="color: #2d3748; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            📋 Job Management Center
+        </h2>
+        <p style="color: #4a5568; margin-bottom: 2rem;">Post new positions and manage your active job listings</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Enhanced job posting card
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%); border-radius: 20px; padding: 2rem; margin: 1rem 0; box-shadow: 0 8px 32px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.5);">
+        <h3 style="color: #2d3748; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            🚀 Post New Job
+        </h3>
+        <p style="color: #4a5568; margin-bottom: 1.5rem;">
+            Upload a job description and let our AI analyze candidate resumes to find the perfect match for your role.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Enhanced file uploader
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); padding: 2rem; border-radius: 16px; margin: 1rem 0; text-align: center; border: 2px dashed #cbd5e0;">
+        <h4 style="color: #2d3748; margin-bottom: 1rem;">📎 Upload Job Description</h4>
+        <p style="color: #4a5568; margin-bottom: 1rem;">Supported formats: PDF, DOCX (Max 10MB)</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    uploaded_file = st.file_uploader("Choose job description file", type=['pdf', 'docx'], label_visibility="collapsed")
+    
+    if st.button("🚀 Post Job", type="primary", use_container_width=True):
+        if uploaded_file:
+            # Extract text from the uploaded file
+            text = ""
+            try:
+                if uploaded_file.name.endswith('.docx'):
+                    doc = Document(io.BytesIO(uploaded_file.getvalue()))
+                    text = "\n".join([para.text for para in doc.paragraphs])
+                elif uploaded_file.name.endswith('.pdf'):
+                    with pdfplumber.open(io.BytesIO(uploaded_file.getvalue())) as pdf:
+                        text = "\n".join([page.extract_text() for page in pdf.pages])
+                else:
+                    st.error("Unsupported file type for JD parsing. Please use DOCX or PDF.")
+                    return
+
+                # Simple JD parsing logic to extract key details
+                title_match = re.search(r"Job Title:\s*(.*)", text, re.IGNORECASE)
+                title = title_match.group(1).strip() if title_match else uploaded_file.name.replace('.docx', '').replace('.pdf', '').strip()
+                
+                company_match = re.search(r"Company:\s*(.*)", text, re.IGNORECASE)
+                company = company_match.group(1).strip() if company_match else st.session_state.user_data.get('company', 'Unknown Company')
+
+                # Simple skills extraction
+                skills_match = re.search(r"(skills|requirements|criteria|qualifications):(.*)", text, re.IGNORECASE | re.DOTALL)
+                if skills_match:
+                    skills_text = skills_match.group(2)
+                    criteria = [s.strip() for s in skills_text.split(',')]
+                else:
+                    criteria = ["No specific skills found"]
+                
+                job_data = {
+                    'title': title,
+                    'company': company,
+                    'location': 'N/A', # Placeholder for demo
+                    'job_type': 'N/A', # Placeholder for demo
+                    'eligibility': 'N/A', # Placeholder for demo
+                    'criteria': criteria,
+                    'date_posted': pd.Timestamp.now().strftime('%Y-%m-%d'),
+                    'applications': 25  # Fixed number instead of random
+                }
+                
+                add_job(job_data)
+                st.success(f"✅ Job '{title}' posted successfully!")
+                st.rerun()
+
+            except UnicodeDecodeError:
+                st.error("There was a character encoding error. Please try a different file.")
+            except Exception as e:
+                st.error(f"An unexpected error occurred during file processing: {e}")
+        else:
+            st.warning("Please upload a job description file first.")
         
-        if st.button("Post Job", type="primary", use_container_width=True):
-            if uploaded_file:
-                # Extract text from the uploaded file
-                text = ""
-                try:
-                    if uploaded_file.name.endswith('.docx'):
-                        doc = Document(io.BytesIO(uploaded_file.getvalue()))
-                        text = "\n".join([para.text for para in doc.paragraphs])
-                    elif uploaded_file.name.endswith('.pdf'):
-                        with pdfplumber.open(io.BytesIO(uploaded_file.getvalue())) as pdf:
-                            text = "\n".join([page.extract_text() for page in pdf.pages])
-                    else:
-                        st.error("Unsupported file type for JD parsing. Please use DOCX or PDF.")
-                        return
-
-                    # Simple JD parsing logic to extract key details
-                    title_match = re.search(r"Job Title:\s*(.*)", text, re.IGNORECASE)
-                    title = title_match.group(1).strip() if title_match else uploaded_file.name.replace('.docx', '').replace('.pdf', '').strip()
-                    
-                    company_match = re.search(r"Company:\s*(.*)", text, re.IGNORECASE)
-                    company = company_match.group(1).strip() if company_match else st.session_state.user_data.get('company', 'Unknown Company')
-
-                    # Simple skills extraction
-                    skills_match = re.search(r"(skills|requirements|criteria|qualifications):(.*)", text, re.IGNORECASE | re.DOTALL)
-                    if skills_match:
-                        skills_text = skills_match.group(2)
-                        criteria = [s.strip() for s in skills_text.split(',')]
-                    else:
-                        criteria = ["No specific skills found"]
-                    
-                    job_data = {
-                        'title': title,
-                        'company': company,
-                        'location': 'N/A', # Placeholder for demo
-                        'job_type': 'N/A', # Placeholder for demo
-                        'eligibility': 'N/A', # Placeholder for demo
-                        'criteria': criteria,
-                        'date_posted': pd.Timestamp.now().strftime('%Y-%m-%d'),
-                        'applications': random.randint(10, 50)
-                    }
-                    
-                    add_job(job_data)
-                    st.success(f"Job '{title}' posted successfully!")
-                    st.rerun()
-
-                except UnicodeDecodeError:
-                    st.error("There was a character encoding error. Please try a different file.")
-                except Exception as e:
-                    st.error(f"An unexpected error occurred during file processing: {e}")
-            else:
-                st.warning("Please upload a job description file first.")
-        
-    st.markdown("---")
-    st.subheader("Your Active Jobs")
-    job_listings_df = pd.DataFrame(job_listings)
-    if not job_listings_df.empty:
-        st.dataframe(job_listings_df[['title', 'company', 'location', 'datePosted', 'applications', 'shortlisted']], use_container_width=True, hide_index=True)
+    # Enhanced active jobs section
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="margin-bottom: 2rem;">
+        <h2 style="color: #2d3748; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            📊 Your Active Job Listings
+        </h2>
+        <p style="color: #4a5568; margin-bottom: 2rem;">Monitor and manage your posted positions</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if job_listings:
+        for job in job_listings:
+            enrolled_for_job = [s for s in enrolled_students if s.get('job_id') == job['id']]
+            applications_count = len(enrolled_for_job)
+            accepted_count = len([s for s in enrolled_for_job if s.get('status') == 'Accepted'])
+            
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%); border-radius: 16px; padding: 2rem; margin: 1rem 0; box-shadow: 0 8px 24px rgba(0,0,0,0.06); border: 1px solid rgba(255,255,255,0.8);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="color: #2d3748; margin: 0 0 0.5rem 0;">{job['title']}</h3>
+                        <p style="color: #4a5568; margin: 0; display: flex; align-items: center; gap: 1rem;">
+                            <span>🏢 {job['company']}</span>
+                            <span>📅 Posted: {job['datePosted']}</span>
+                        </p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="background: linear-gradient(135deg, #4299e1, #3182ce); color: white; padding: 0.5rem 1rem; border-radius: 12px; font-weight: 600; margin-bottom: 0.5rem;">
+                            {applications_count} Applications
+                        </div>
+                        <div style="background: linear-gradient(135deg, #48bb78, #38a169); color: white; padding: 0.5rem 1rem; border-radius: 12px; font-weight: 600;">
+                            {accepted_count} Accepted
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.info("No jobs posted yet.")
+        st.markdown("""
+        <div style="text-align: center; padding: 3rem; background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); border-radius: 16px; margin: 1rem 0;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">📋</div>
+            <h3 style="color: #2d3748; margin-bottom: 1rem;">No Jobs Posted Yet</h3>
+            <p style="color: #4a5568;">Upload your first job description to start finding the perfect candidates!</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 def student_job_listings_page():
-    st.title("Open Job Opportunities 🏢")
-    st.markdown("### Find your next role, curated for you.")
-    st.markdown("---")
+    # Enhanced header
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1 style="font-size: 3.5rem; margin-bottom: 0.5rem;">🏢 Job Opportunities</h1>
+        <p style="font-size: 1.3rem; color: #4a5568; margin: 0;">Discover your next career opportunity</p>
+        <p style="font-size: 1rem; color: #718096; margin-top: 0.5rem;">AI-powered job matching tailored for you</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.sidebar.markdown("### 🔎 Job Filters")
+    # Enhanced sidebar filters
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%); padding: 1.5rem; border-radius: 16px; margin-bottom: 1rem;">
+        <h3 style="color: #2d3748; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            🔎 Smart Filters
+        </h3>
+    </div>
+    """, unsafe_allow_html=True)
     job_listings = get_job_listings()
     job_types = st.sidebar.multiselect("Job Type", ["Remote", "Hybrid", "On-site"])
     job_fields = st.sidebar.multiselect("Desired Field", ["Data Science", "Full Stack Development", "Cloud Engineering", "Product Management", "Marketing"])
@@ -471,84 +700,177 @@ def student_job_listings_page():
         st.warning("No opportunities found matching your filters. Try a different search!")
     else:
         for job in filtered_jobs:
-            with st.container(border=True):
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.subheader(job['title'])
-                    st.caption(f"{job['company']} | 📍 {job['location']} | **{job['job_type']}**")
-                    st.markdown(f"**Eligibility:** {job['eligibility']}")
-                with col2:
-                    if st.button("Apply Now", key=f"apply_{job['id']}", use_container_width=True):
+            # Enhanced job card with custom HTML
+            st.markdown(f"""
+            <div class="job-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: #1a202c; font-size: 1.5rem;">{job['title']}</h3>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; color: #4a5568;">
+                            <span style="display: flex; align-items: center; gap: 0.3rem;">
+                                🏢 <strong>{job['company']}</strong>
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 0.3rem;">
+                                📍 {job['location']}
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 0.3rem;">
+                                💼 {job['job_type']}
+                            </span>
+                        </div>
+                        <div style="background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                            <strong style="color: #2d3748;">Eligibility:</strong> 
+                            <span style="color: #4a5568;">{job['eligibility']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Button section
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col3:
+                # Check if student has already applied to this job
+                has_applied = False
+                if 'enrolled_students' in st.session_state and 'user_data' in st.session_state:
+                    has_applied = any(
+                        enrollment['student_id'] == st.session_state.user_data.get('id') and 
+                        enrollment['job_id'] == job['id']
+                        for enrollment in st.session_state.enrolled_students
+                    )
+                
+                if has_applied:
+                    st.button("✅ Applied", key=f"applied_{job['id']}", use_container_width=True, disabled=True, type="secondary")
+                else:
+                    if st.button("🚀 Apply Now", key=f"apply_{job['id']}", use_container_width=True, type="primary"):
                         st.session_state.student_page = "job_info"
                         st.session_state.selected_job_id = job['id']
                         st.rerun()
+            
+            st.markdown("<br>", unsafe_allow_html=True)
 
 # --- Profile Management Pages ---
 def student_profile_page():
-    st.title("My Profile 👤")
-    st.markdown("### Edit and manage your personal details.")
-    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">👤 My Profile</h1>
+        <p style="font-size: 1.2rem; color: #4a5568; margin: 0;">Edit and manage your personal details</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    user_data = authenticate_user(st.session_state.user_data['email'], st.session_state.user_data['password'])
+    user_data = st.session_state.user_data
 
+    # --- Enhanced Profile Information Form ---
+    st.markdown("""
+    <div class="profile-section">
+        <h2 style="color: #2d3748; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            📝 Personal Information
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
     with st.form("student_profile_form"):
-        st.subheader("Personal Information")
-        name = st.text_input("Full Name", value=user_data['name'])
-        email = st.text_input("Email Address", value=user_data['email'])
-        contact_number = st.text_input("Contact Number", value=user_data.get('contact_number', ''))
-        linkedin = st.text_input("LinkedIn Profile URL", value=user_data.get('linkedin', ''))
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("👤 Full Name", value=user_data.get('name', ''), placeholder="Enter your full name")
+            contact_number = st.text_input("📱 Contact Number", value=user_data.get('contact_number', ''), placeholder="+1 (555) 123-4567")
+        with col2:
+            email = st.text_input("📧 Email Address", value=user_data.get('email', ''), placeholder="your.email@example.com")
+            linkedin = st.text_input("🔗 LinkedIn Profile URL", value=user_data.get('linkedin', ''), placeholder="https://linkedin.com/in/yourprofile")
         
-        st.subheader("Professional Bio")
-        bio = st.text_area("Write a short professional bio", value=user_data.get('bio', ''), height=150)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 💼 Professional Bio")
+        bio = st.text_area("Tell us about your professional background, skills, and career goals", 
+                          value=user_data.get('bio', ''), 
+                          height=150,
+                          placeholder="e.g., Aspiring Data Scientist with strong foundation in Python, SQL, and Machine Learning. Passionate about solving complex problems with data-driven insights...")
         
-        save_button = st.form_submit_button("Save Changes", type="primary", use_container_width=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        save_button = st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True)
 
     if save_button:
-        conn = sqlite3.connect('users.db')
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE users SET name=?, email=?, contact_number=?, linkedin=?, bio=? WHERE id=?
-        """, (name, email, contact_number, linkedin, bio, user_data['id']))
-        conn.commit()
-        conn.close()
+        # Database update logic
+        with sqlite3.connect('users.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET name=?, email=?, contact_number=?, linkedin=?, bio=? WHERE id=?",
+                           (name, email, contact_number, linkedin, bio, user_data['id']))
         st.success("Profile updated successfully! ✅")
+        
+        # Refresh session state with the new data
+        st.session_state.user_data.update({
+            'name': name, 'email': email, 'contact_number': contact_number, 
+            'linkedin': linkedin, 'bio': bio
+        })
+        st.rerun()
+
+    # --- Enhanced Resume Checker Section ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+    <div class="profile-section">
+        <h2 style="color: #2d3748; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            📄 AI Resume Analyzer
+        </h2>
+        <p style="color: #4a5568; margin-bottom: 1.5rem;">
+            Upload your resume to get an instant AI-powered analysis with personalized feedback and ATS compatibility check.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.markdown("---")
-    st.subheader("General Resume Checker")
-    st.markdown("Upload your resume to check its overall score and ATS-friendliness.")
-    uploaded_resume = st.file_uploader("Choose a PDF or DOCX file...", type=['pdf', 'docx'], key="general_resume_uploader")
+    # Enhanced file uploader section
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); padding: 2rem; border-radius: 16px; margin: 1rem 0; text-align: center; border: 2px dashed #cbd5e0;">
+        <h4 style="color: #2d3748; margin-bottom: 1rem;">📎 Upload Your Resume</h4>
+        <p style="color: #4a5568; margin-bottom: 1rem;">Supported formats: PDF, DOCX (Max 10MB)</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    uploaded_resume = st.file_uploader("Choose your resume file", type=['pdf', 'docx'], key="general_resume_uploader", label_visibility="collapsed")
     
     if uploaded_resume:
-        st.success("Resume uploaded! Analyzing...")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); padding: 1.5rem; border-radius: 12px; margin: 1rem 0;">
+            <h4 style="color: #155724; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                ✅ Resume uploaded successfully! Analyzing with AI...
+            </h4>
+        </div>
+        """, unsafe_allow_html=True)
         
-        generic_skills = ["Python", "JavaScript", "SQL", "Machine Learning", "Data Analysis", "Cloud Computing", "Project Management", "Agile", "API", "Web Development", "UI/UX"]
+        generic_skills = ["Python", "JavaScript", "SQL", "Machine Learning", "Data Analysis", "Cloud Computing", "Project Management", "Communication", "Leadership", "Problem Solving"]
         
-        with st.spinner("Analyzing your resume with the AI engine..."):
+        with st.spinner("🤖 AI is analyzing your resume..."):
             analysis_result = analyze_uploaded_files(uploaded_resume, generic_skills)
         
         score = analysis_result['score']
         ats_friendly = score > 60
         
-        st.markdown(f"#### Your Overall Resume Score: **{score}%**")
+        # Enhanced results display
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown(f"""
+            <div style="text-align: center; background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%); padding: 2rem; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+                <h2 style="color: #2d3748; margin-bottom: 1rem;">📊 Your Resume Score</h2>
+                <div style="font-size: 4rem; font-weight: bold; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 1rem 0;">
+                    {score}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         st.progress(score / 100)
-        st.markdown(get_ats_html(ats_friendly), unsafe_allow_html=True)
-        st.info("This is a general score. For a job-specific score, check the job listings.")
         
-        st.subheader("AI-Powered Soft Skills Assessment")
-        st.markdown("Based on your profile and resume, here is a general assessment of your soft skills:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(get_ats_html(ats_friendly), unsafe_allow_html=True)
+        with col2:
+            st.markdown(get_verdict_html('High' if score > 80 else 'Medium' if score > 60 else 'Low'), unsafe_allow_html=True)
         
-        soft_skills_scores = {
-            'Communication': random.randint(60, 95),
-            'Problem-Solving': random.randint(70, 99),
-            'Teamwork': random.randint(65, 90),
-            'Leadership': random.randint(60, 90)
-        }
-        
-        for skill, score in soft_skills_scores.items():
-            st.markdown(f"**{skill}**")
-            st.progress(score / 100)
-            
-        st.info("These scores are a general assessment and may vary depending on the specific job role.")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #bee3f8 0%, #90cdf4 100%); padding: 1.5rem; border-radius: 12px; margin: 1rem 0;">
+            <p style="color: #1a365d; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                💡 <strong>Pro Tip:</strong> This is a general analysis. For job-specific scores and detailed feedback, apply to specific positions in the Job Opportunities section!
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 def recruiter_profile_page():
     st.title("My Profile 👤")
@@ -577,61 +899,93 @@ def recruiter_profile_page():
         conn.close()
         st.success("Profile updated successfully! ✅")
 
+def get_simulated_students():
+    """Get simulated students with consistent scores stored in session state"""
+    if 'simulated_students' not in st.session_state:
+        # Initialize with fixed scores that won't change
+        st.session_state.simulated_students = [
+            {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': 87, 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': 85, 'Problem-Solving': 92, 'Teamwork': 78}},
+            {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': 82, 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': 89, 'Problem-Solving': 85, 'Teamwork': 91}},
+            {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': 74, 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': 72, 'Problem-Solving': 88, 'Teamwork': 85}},
+        ]
+    return st.session_state.simulated_students
+
 def explore_students_page():
     st.title("Explore Students 🚀")
     st.markdown("### Discover and filter potential candidates.")
     st.markdown("---")
 
-    simulated_students = [
-        {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': random.randint(75, 95), 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': random.randint(70,95), 'Problem-Solving': random.randint(80,99), 'Teamwork': random.randint(65,90)}},
-        {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': random.randint(70, 90), 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': random.randint(75,99), 'Problem-Solving': random.randint(70,90), 'Teamwork': random.randint(80,95)}},
-        {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': random.randint(60, 85), 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': random.randint(60,85), 'Problem-Solving': random.randint(65,90), 'Teamwork': random.randint(70,95)}},
-    ]
+    # Get enrolled students instead of simulated ones
+    enrolled_students = st.session_state.get('enrolled_students', [])
+    
+    if not enrolled_students:
+        st.info("No students have enrolled for jobs yet. Students will appear here once they apply for positions.")
+        return
 
-    for student in simulated_students:
+    for student in enrolled_students:
         with st.container(border=True):
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.subheader(f"{student['name']}")
-                st.caption(f"**Bio:** {student['bio']}")
+                st.subheader(f"{student['student_name']}")
+                st.caption(f"**Bio:** {student['student_bio']}")
+                st.caption(f"**Applied for:** {student['job_title']} at {student['company']}")
+                st.caption(f"**Applied on:** {student['enrollment_date']}")
                 st.markdown(get_ats_html(student['ats_friendly']), unsafe_allow_html=True)
             with col2:
                 st.metric(label="Resume Score", value=f"{student['score']}%")
                 st.markdown(get_verdict_html('High' if student['score'] > 80 else 'Medium'), unsafe_allow_html=True)
             
-            if st.button(f"View Full Profile", key=f"view_{student['id']}", use_container_width=True):
+            if st.button(f"View Full Profile", key=f"view_{student['student_id']}_{student['job_id']}", use_container_width=True):
                 st.session_state.recruiter_page = "view_student_profile"
-                st.session_state.selected_student_id = student['id']
+                st.session_state.selected_enrolled_student = student
                 st.rerun()
 
 def view_student_profile_page():
-    job_listings = get_job_listings()
-    simulated_students = [
-        {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': random.randint(75, 95), 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': random.randint(70,95), 'Problem-Solving': random.randint(80,99), 'Teamwork': random.randint(65,90)}},
-        {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': random.randint(70, 90), 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': random.randint(75,99), 'Problem-Solving': random.randint(70,90), 'Teamwork': random.randint(80,95)}},
-        {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': random.randint(60, 85), 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': random.randint(60,85), 'Problem-Solving': random.randint(65,90), 'Teamwork': random.randint(70,95)}},
-    ]
-
-    student = next((s for s in simulated_students if s['id'] == st.session_state.selected_student_id), None)
-    job = next((j for j in job_listings if j['id'] == student['job_id']), None)
-
-    if not student or not job:
-        st.error("Student or job data not found.")
+    # Add JavaScript to scroll to top
+    st.markdown("""
+    <script>
+    window.parent.document.querySelector('.main').scrollTop = 0;
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # Get the selected enrolled student
+    if 'selected_enrolled_student' not in st.session_state:
+        st.error("No student selected.")
         if st.button("⬅️ Back to Students", use_container_width=True):
             st.session_state.recruiter_page = "explore_students"
             st.rerun()
         return
+    
+    student = st.session_state.selected_enrolled_student
+    job_listings = get_job_listings()
+    
+    # Find the job the student applied for
+    job = None
+    if job_listings:
+        job = next((j for j in job_listings if j['id'] == student['job_id']), None)
+    
+    # Create job info from enrollment data if job not found in listings
+    if not job:
+        job = {
+            'id': student['job_id'],
+            'title': student['job_title'],
+            'company': student['company'],
+            'location': 'N/A',
+            'job_type': 'N/A'
+        }
 
-    st.title(f"Profile: {student['name']}")
+    st.title(f"Profile: {student['student_name']}")
     st.markdown("---")
     
     col_info, col_score = st.columns([3, 1])
     with col_info:
         st.subheader("Candidate Information")
-        st.markdown(f"**Bio:** {student['bio']}")
-        st.markdown(f"**Email:** {student['email']}")
-        st.markdown(f"**Contact:** {student['contact_number']}")
+        st.markdown(f"**Bio:** {student['student_bio']}")
+        st.markdown(f"**Email:** {student['student_email']}")
+        st.markdown(f"**Contact:** {student['student_contact']}")
         st.markdown(f"**Applied For:** {job['title']} at {job['company']}")
+        st.markdown(f"**Application Date:** {student['enrollment_date']}")
+        st.markdown(f"**Status:** {student['status']}")
         
     with col_score:
         st.metric(label="Resume Score", value=f"{student['score']}%")
@@ -654,33 +1008,50 @@ def view_student_profile_page():
         st.markdown(f'<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">{missing_html}</div>', unsafe_allow_html=True)
         
     st.markdown("---")
-
-    st.subheader("AI-Powered Soft Skills Assessment")
-    st.markdown("A general assessment of the candidate's soft skills based on their profile and resume content.")
-    for skill, score in student['soft_skills'].items():
-        st.markdown(f"**{skill}**")
-        st.progress(score / 100)
-    
-    st.markdown("---")
     
     col_accept, col_dismiss, col_back = st.columns([1, 1, 2])
     
     if col_accept.button("✅ Accept Student", type="primary", use_container_width=True):
         if 'student_notifications' not in st.session_state:
             st.session_state.student_notifications = []
-        st.session_state.student_notifications.append({
-            'student_id': student['id'],
+        
+        # Add notification for the student
+        notification = {
+            'student_id': student['student_id'],
+            'student_name': student['student_name'],
+            'student_email': student['student_email'],
             'job_title': job['title'],
+            'job_id': job['id'],
             'status': 'Accepted',
             'recruiter_name': st.session_state.user_data['name'],
-            'company': st.session_state.user_data.get('company', 'Recruiter')
-        })
-        st.success(f"Notification sent to {student['name']}! The student has been accepted for the role.")
-        st.session_state.recruiter_page = "explore_students" # Navigate back to prevent multiple sends
-        st.rerun()
+            'company': st.session_state.user_data.get('company', 'Unknown Company'),
+            'message': f"Congratulations! You have been selected for the {job['title']} role.",
+            'timestamp': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        st.session_state.student_notifications.append(notification)
+        
+        # Update the student's status in enrolled_students
+        for i, enrolled_student in enumerate(st.session_state.enrolled_students):
+            if (enrolled_student['student_id'] == student['student_id'] and 
+                enrolled_student['job_id'] == student['job_id']):
+                st.session_state.enrolled_students[i]['status'] = 'Accepted'
+                break
+        
+        # Show success message without balloons
+        st.success(f"✅ **{student['student_name']}** has been accepted for the **{job['title']}** position!")
+        st.info(f"📧 Notification sent to: **{student['student_email']}**")
+        st.info(f"🏢 Company: **{st.session_state.user_data.get('company', 'Your Company')}**")
     
     if col_dismiss.button("❌ Dismiss Student", use_container_width=True):
-        st.warning(f"You have dismissed {student['name']} for this role.")
+        # Remove the student from the enrolled students database
+        if 'enrolled_students' in st.session_state:
+            st.session_state.enrolled_students = [
+                s for s in st.session_state.enrolled_students 
+                if not (s['student_id'] == student['student_id'] and s['job_id'] == student['job_id'])
+            ]
+        st.success(f"Student {student['student_name']} has been dismissed and removed from the database.")
+        st.session_state.recruiter_page = "explore_students"  # Navigate back to student list
+        st.rerun()
     
     if col_back.button("⬅️ Back to Students", use_container_width=True):
         st.session_state.recruiter_page = "explore_students"
@@ -711,6 +1082,7 @@ def show_login_page():
             st.session_state.logged_in = True
             st.session_state.user_role = user_data['role']
             st.session_state.user_data = user_data
+            st.session_state.page = 'dashboard'
             st.success("Login successful! Redirecting to your dashboard...")
             st.rerun()
         else:
@@ -723,6 +1095,7 @@ def show_login_page():
         if st.button("Sign Up", key="login_signup_button", use_container_width=True):
             redirect_to_signup()
     with col2:
+        st.markdown("Forgot your password?")
         if st.button("Forgot Password?", key="forgot_password_button", use_container_width=True):
             st.session_state.login_state = 'forgot_password'
             st.rerun()
@@ -852,11 +1225,59 @@ def show_signup_page():
         redirect_to_login()
 
 
-# --- Main App Logic ---
+# --- Home Page ---
+def home_page():
+    st.markdown("""\
+    <div class="hero-section">
+        <h1 class="hero-title">AI-Powered Resume Evaluator</h1>
+        <p class="hero-subtitle">Revolutionizing recruitment with intelligent matching technology</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("### Choose Your Role")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        col_recruiter, col_student = st.columns(2)
+        
+        with col_recruiter:
+            if st.button("", key="recruiter_card", help="Click to access recruiter portal"):
+                st.session_state.selected_role = "Recruiter"
+                st.session_state.page = "auth"
+                st.rerun()
+            
+            st.markdown("""\
+            <div class="role-card" onclick="document.querySelector('[data-testid=\'recruiter_card\']').click()">
+                <div class="role-icon">👔</div>
+                <h3 class="role-title">Recruiter</h3>
+                <p class="role-description">Post jobs, review candidates, and find the perfect match for your team</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_student:
+            if st.button("", key="student_card", help="Click to access student portal"):
+                st.session_state.selected_role = "Student"
+                st.session_state.page = "auth"
+                st.rerun()
+            
+            st.markdown("""\
+            <div class="role-card" onclick="document.querySelector('[data-testid=\'student_card\']').click()">
+                <div class="role-icon">🎓</div>
+                <h3 class="role-title">Student</h3>
+                <p class="role-description">Discover opportunities, get resume feedback, and land your dream job</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+# --- Session State Initialization ---
+if 'page' not in st.session_state:
+    st.session_state.page = 'home'
+if 'selected_role' not in st.session_state:
+    st.session_state.selected_role = None
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'login_state' not in st.session_state:
-    st.session_state.login_state = 'signup'
+    st.session_state.login_state = 'login'
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'user_data' not in st.session_state:
@@ -867,6 +1288,8 @@ if 'recruiter_page' not in st.session_state:
     st.session_state.recruiter_page = "explore_students"
 if 'student_notifications' not in st.session_state:
     st.session_state.student_notifications = []
+if 'enrolled_students' not in st.session_state:
+    st.session_state.enrolled_students = []
 if 'live_sessions' not in st.session_state:
     st.session_state.live_sessions = [{'id': 1, 'title': 'Q&A with TechCorp Hiring Team', 'recruiter': 'John Doe', 'date': '2025-09-25', 'time': '11:00 AM', 'status': 'Upcoming', 'messages': []}]
 if 'live_chat' not in st.session_state:
@@ -876,41 +1299,120 @@ if 'interview_schedule' not in st.session_state:
 
 init_db()
 
-st.sidebar.title("AI Recruitment Matcher")
-st.sidebar.markdown("---")
+# --- Main Navigation Logic ---
+if st.session_state.page == 'home':
+    home_page()
+elif st.session_state.page == 'auth':
+    # Show authentication pages based on selected role
+    if not st.session_state.logged_in:
+        st.markdown(f"""
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1 class="auth-title">{st.session_state.selected_role} Portal</h1>
+                <p class="auth-subtitle">Welcome to the AI-Powered Resume Evaluator</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.session_state.login_state == 'login':
+            show_login_page()
+        elif st.session_state.login_state == 'forgot_password':
+            show_forgot_password_page()
+        elif st.session_state.login_state == 'verify_otp':
+            show_verify_otp_page()
+        elif st.session_state.login_state == 'reset_password':
+            show_reset_password_page()
+        else:
+            show_signup_page()
+    else:
+        # Redirect to dashboard after login
+        st.session_state.page = 'dashboard'
+        st.rerun()
 
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.user_data['name']}")
+elif st.session_state.page == 'dashboard' and st.session_state.logged_in:
+    # Sidebar for logged-in users
+    st.sidebar.title("🤖 AI Recruitment Matcher")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"**Welcome, {st.session_state.user_data['name']}**")
     st.sidebar.markdown(f"**Role:** {st.session_state.user_data['role']}")
-    if st.sidebar.button("Logout", use_container_width=True):
+    
+    if st.sidebar.button("🏠 Home", use_container_width=True):
+        st.session_state.page = 'home'
         st.session_state.logged_in = False
-        st.session_state.login_state = 'login'
         st.rerun()
     
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.login_state = 'login'
+        st.session_state.page = 'home'
+        st.rerun()
+    
+    st.sidebar.markdown("---")
+    
     if st.session_state.user_role == "Recruiter":
-        st.sidebar.markdown("---")
         recruiter_nav = st.sidebar.radio("Navigation", ["Dashboard", "My Profile", "Explore Students"], key="recruiter_nav")
         
-        if recruiter_nav == "Dashboard":
+        # Check if we're viewing a student profile first
+        if st.session_state.recruiter_page == "view_student_profile":
+            view_student_profile_page()
+        elif recruiter_nav == "Dashboard":
             recruiter_dashboard()
         elif recruiter_nav == "My Profile":
             recruiter_profile_page()
         elif recruiter_nav == "Explore Students":
+            # Reset the recruiter_page when going back to explore students
+            if st.session_state.recruiter_page != "explore_students":
+                st.session_state.recruiter_page = "explore_students"
             explore_students_page()
-        
-        if st.session_state.recruiter_page == "view_student_profile":
-            view_student_profile_page()
 
     elif st.session_state.user_role == "Student":
-        st.sidebar.markdown("---")
+        # Check if there are notifications for this student
+        student_notification_count = 0
+        if st.session_state.student_notifications:
+            for notification in st.session_state.student_notifications:
+                if (notification['status'] == 'Accepted' and 
+                    notification.get('student_email') == st.session_state.user_data.get('email')):
+                    student_notification_count += 1
+        
+        # Show notification badge in sidebar
+        if student_notification_count > 0:
+            st.sidebar.markdown(f"""
+            <div style="background-color: #ff4444; color: white; padding: 10px; border-radius: 10px; text-align: center; margin-bottom: 10px;">
+                🔔 <strong>{student_notification_count} New Notification{'s' if student_notification_count > 1 else ''}!</strong>
+            </div>
+            """, unsafe_allow_html=True)
+        
         student_nav = st.sidebar.radio("Navigation", ["Job Opportunities", "My Profile"], key="student_nav")
         
         if st.session_state.student_notifications:
             st.subheader("Your Notifications 🔔")
+            notifications_to_show = []
+            remaining_notifications = []
+            
             for notification in st.session_state.student_notifications:
-                if notification['status'] == 'Accepted' and notification['student_id'] == 1:
-                    st.success(f"**Congratulations! 🎉** You have been selected for the **{notification['job_title']}** role by **{notification['company']}**! Please check your **My Interviews** tab to schedule your interview.")
-            st.session_state.student_notifications = []
+                # Show notifications for the current logged-in student
+                if (notification['status'] == 'Accepted' and 
+                    notification.get('student_email') == st.session_state.user_data.get('email')):
+                    notifications_to_show.append(notification)
+                else:
+                    remaining_notifications.append(notification)
+            
+            # Display notifications
+            for notification in notifications_to_show:
+                st.success(f"""
+                **🎉 CONGRATULATIONS! 🎉**
+                
+                You have been **SELECTED** for the **{notification['job_title']}** role!
+                
+                **Company:** {notification['company']}  
+                **Recruiter:** {notification['recruiter_name']}  
+                **Time:** {notification.get('timestamp', 'Just now')}
+                
+                📧 Check your email for further instructions!
+                """)
+                
+            # Keep other notifications that aren't for this student
+            st.session_state.student_notifications = remaining_notifications
         
         if student_nav == "Job Opportunities":
             if st.session_state.student_page == "job_listings":
@@ -919,15 +1421,9 @@ if st.session_state.logged_in:
                 get_job_info_page(st.session_state.selected_job_id)
         elif student_nav == "My Profile":
             student_profile_page()
-            
+
 else:
-    if st.session_state.login_state == 'login':
-        show_login_page()
-    elif st.session_state.login_state == 'forgot_password':
-        show_forgot_password_page()
-    elif st.session_state.login_state == 'verify_otp':
-        show_verify_otp_page()
-    elif st.session_state.login_state == 'reset_password':
-        show_reset_password_page()
-    else:
-        show_signup_page()
+    # Redirect to home if not logged in and not on auth page
+    if st.session_state.page != 'auth':
+        st.session_state.page = 'home'
+        st.rerun()
