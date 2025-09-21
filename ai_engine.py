@@ -17,7 +17,7 @@ from langchain_core.output_parsers import StrOutputParser
 # os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY"
 
 # Please replace "YOUR_API_KEY" with your actual key
-os.environ["GOOGLE_API_KEY"] = "AIzaSyBDES5pnvYN8mtTF-baArohmjE5fW7y8YA"
+os.environ["GOOGLE_API_KEY"] = "AIzaSyBZRReHIjkFUMPcwHP2Wbe06Bg77AmgDjA"
 
 # Initialize the LLM for text generation (feedback)
 llm = ChatGoogleGenerativeAI(
