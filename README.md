@@ -1,133 +1,121 @@
+Here’s an **updated `README.md`** that now includes a clear **Library Installation / Dependencies** section so anyone can recreate your environment safely.
+
+---
+
 ```markdown
-# 🚀 Resume Screening & Job Match System
+# JobFit-AI
 
-## 📌 Overview
-The Resume Screening & Job Match System is an AI-powered web application designed to streamline campus recruitment and placement readiness.  
-It helps recruiters and placement teams automatically **match resumes against job descriptions (JDs)** and generate structured evaluations with **scores, missing skills, and improvement tips**.  
-
-This reduces manual screening time, increases accuracy, and provides students with actionable feedback.
+An AI-powered job–candidate matching engine.  
+This project uses a Python backend with SQLite databases to store job postings and user profiles,
+and integrates with modern AI tools to recommend the best matches.
 
 ---
 
-## ✨ Features
-- 📄 Resume & JD Upload – Upload resumes (PDF/DOCX) and job descriptions.  
-- 🧠 AI-Powered Screening – Combines **keyword matching + semantic similarity** for better accuracy.  
-- 📊 Scoring & Verdicts – Provides:
-  - Match Score (0–100)  
-  - Verdict: High / Medium / Low Fit  
-  - Missing & Extra Skills  
-  - Suggestions for improvement  
-- 📈 Evaluator Dashboard(Streamlit)  
-  - Searchable table of evaluated resumes  
-  - Filters by role, score range, and verdict  
-  - Detailed view for feedback & recommendations
+## 📂 Project Structure  ```
 
-- 🗄️ Database Storage (SQLite) – Stores JDs, resumes, and evaluations for audit & retrieval.  
-- ⚡ Fast Processing – Supports multiple resumes in bulk.  
+hack.jobfit-ai/
+├── ai\_engine.py        # Core AI logic for job-fit matching
+├── jobs.db             # (Optional) SQLite database of job postings
+├── users.db            # (Optional) SQLite database of user profiles
+├── requirements.txt    # Python dependencies
+├── .gitignore          # Git ignore rules (excludes venv & temp files)
+└── .gitattributes      # Git LFS / repo attributes  ````
+
+
+> **Note:** Local virtual environments (`venv/`, `venv_fresh/`) are intentionally excluded.
 
 ---
 
-## 🏗️ Tech Stack
-### 🔹 Frontend
-- [Streamlit](https://streamlit.io/) – Interactive evaluator dashboard  
+## 🚀 Getting Started
 
-### 🔹 Backend
-- [Flask](https://flask.palletsprojects.com/) – API service for resume evaluation  
-- [spaCy / NLTK] – NLP-based text extraction & preprocessing  
-- [Sentence Transformers / Hugging Face] – Semantic similarity with embeddings  
-
-### 🔹 Database
-- **SQLite** (MVP)
-
----
-
-## 📂 Project Structure
-```
-
-jobfit-ai/
-
-│── backend/
-│   ├── app.py              # Flask API entry point
-│   ├── models/             # ML/NLP models
-│   ├── utils/              # Parsing & scoring helpers
-│   ├── requirements.txt    # Backend dependencies
-│
-
-│── frontend/
-│   ├── streamlit\_app.py    # Streamlit dashboard
-│   ├── pages/              # Extra pages (Upload, Dashboard, Details)
-│
-│── database/
-│   ├── schema.sql          # DB schema for resumes, JDs, evaluations
-│
-│── README.md
-
-````
-
----
-
-## ⚙️ Installation & Setup
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/<your-team>/resume-screening-system.git
-cd resume-screening-system
+git clone https://github.com/imannaswini/jobfit-ai.git
+cd jobfit-ai
 ````
 
-### 2️⃣ Setup Backend (Flask)
+### 2️⃣ Create & Activate a Virtual Environment
 
 ```bash
-cd backend
 python -m venv venv
-source venv/bin/activate   # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
 ```
 
-Flask server will start at `http://127.0.0.1:5000/`
+### 3️⃣ Install Dependencies
 
-### 3️⃣ Setup Frontend (Streamlit)
+Install all required third-party libraries with:
 
 ```bash
-cd frontend
+pip install --upgrade pip
 pip install -r requirements.txt
-streamlit run streamlit_app.py
 ```
+
+If you prefer to install specific key libraries manually:
+
+```bash
+pip install pandas
+pip install langchain
+pip install langchain-google-genai==1.0.1   # 1.0.0 does not exist
+```
+
+*(Standard-library modules like `sqlite3` need no installation.)*
 
 ### 4️⃣ Database Setup
 
-* For **SQLite**: Schema auto-creates on first run.
-* For **MySQL**: Run `database/schema.sql` and update DB credentials in `backend/config.py`.
+* If you have starter `jobs.db` and `users.db` files, place them in the project root.
+* Otherwise, create new SQLite databases or modify `ai_engine.py` to generate them.
+
+### 5️⃣ Run the AI Engine
+
+```bash
+python ai_engine.py
+```
 
 ---
 
-## 🚀 Usage
+## 🛠 Development Notes
 
-1. Run **Flask Backend** (`app.py`).
-2. Run **Streamlit Frontend** (`streamlit_app.py`).
-3. Upload a **Job Description (JD)**.
-4. Upload **Resumes** for evaluation.
-5. View scores, verdicts, and improvement tips on the **Dashboard**.
+* Python Version: 3.9+ recommended
+* Environment: Do **not** commit your virtual environment or large binaries.
+* Large Files: Git LFS is configured in `.gitattributes` if you ever need to track large model files.
 
 ---
 
-## 👥 Team Roles
+## 📝 Roadmap
 
-* **Member 1 (Backend + AI)**: Resume parsing, scoring, Flask APIs.
-* **Member 2 (Frontend)**: Streamlit UI, dashboard, integration with backend.
-* **Member 3 (Database + Integration)**: DB schema, API-DB integration, deployment setup.
+* [ ] REST API endpoints for job matching
+* [ ] Web frontend integration
+* [ ] Advanced candidate ranking using LLMs
+* [ ] Deployment on cloud (Docker / CI/CD)
 
 ---
 
-## 📊 Future Enhancements
+## 🤝 Contributing
 
-* ✅ Bulk resume upload (ZIP/PDFs)
-* ✅ Student self-check portal
-* ✅ Advanced analytics dashboard (per JD, skill gap trends)
-* ✅ Integration with ATS (Applicant Tracking Systems)
+1. Fork the repo and create a feature branch.
+2. Commit your changes and push to your branch.
+3. Open a Pull Request.
 
 ---
 
 ## 📜 License
 
-This project is licensed under the MIT License.
+MIT License – feel free to use and modify.
 
+````
+
+---
+
+Save this as **`README.md`** in the root of your repo:
+
+```bash
+echo "<paste content above>" > README.md
+git add README.md
+git commit -m "Update README with library installation details"
+git push origin main
+````
+
+This version now clearly documents **how to install required libraries** and the exact version of `langchain-google-genai` to avoid installation errors.
