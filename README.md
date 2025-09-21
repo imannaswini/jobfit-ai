@@ -1,9 +1,7 @@
-Here’s an **updated `README.md`** that now includes a clear **Library Installation / Dependencies** section so anyone can recreate your environment safely.
 
----
 
 ```markdown
-# JobFit-AI
+JobFit-AI
 
 An AI-powered job–candidate matching engine.  
 This project uses a Python backend with SQLite databases to store job postings and user profiles,
@@ -14,7 +12,7 @@ and integrates with modern AI tools to recommend the best matches.
 ## 📂 Project Structure  ```
 
 hack.jobfit-ai/
-├── ai\_engine.py        # Core AI logic for job-fit matching
+├── ai_engine.py        # Core AI logic for job-fit matching
 ├── jobs.db             # (Optional) SQLite database of job postings
 ├── users.db            # (Optional) SQLite database of user profiles
 ├── requirements.txt    # Python dependencies
