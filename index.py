@@ -4,6 +4,13 @@ import random
 import os
 import smtplib # This library is for sending emails. Actual implementation would require configuration.
 from email.message import EmailMessage
+from ai_engine import analyze_uploaded_files # Updated import
+import sqlite3
+from passlib.hash import pbkdf2_sha256
+import io
+from docx import Document
+import pdfplumber
+import re
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -25,7 +32,7 @@ st.markdown("""
     .main-header {
         font-family: 'Poppins', sans-serif;
         font-weight: 700;
-        color: #2D3748;
+         
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
     }
@@ -93,21 +100,148 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- Sample Data (for demonstration) ---
-job_listings = [
-    {'id': 1, 'title': 'Senior Data Scientist', 'field': 'Data Science', 'company': 'TechCorp Inc', 'location': 'Hyderabad', 'job_type': 'Hybrid', 'eligibility': 'B.Tech/M.Tech in Computer Science, 3+ years experience.', 'criteria': ['Python', 'Machine Learning', 'Data Analysis', 'SQL', 'TensorFlow', 'AWS'], 'datePosted': '2024-09-15', 'applications': 245, 'shortlisted': 12, 'status': 'active'},
-    {'id': 2, 'title': 'Full Stack Developer', 'field': 'Full Stack Development', 'company': 'StartupXYZ', 'location': 'Bangalore', 'job_type': 'Remote', 'eligibility': 'Any degree, 1+ years experience in a related field.', 'criteria': ['React', 'Node.js', 'MongoDB', 'JavaScript', 'CSS', 'Redis'], 'datePosted': '2024-09-18', 'applications': 189, 'shortlisted': 8, 'status': 'active'},
-    {'id': 3, 'title': 'Cloud Engineer', 'field': 'Cloud Engineering', 'company': 'DataWave', 'location': 'Pune', 'job_type': 'On-site', 'eligibility': 'Any degree with a strong portfolio.', 'criteria': ['AWS', 'CI/CD', 'Python', 'Terraform', 'Kubernetes'], 'datePosted': '2024-09-20', 'applications': 152, 'shortlisted': 5, 'status': 'active'},
-    {'id': 4, 'title': 'Product Manager Intern', 'field': 'Product Management', 'company': 'Innovate Solutions', 'location': 'Remote', 'job_type': 'Remote', 'eligibility': 'Currently pursuing any degree.', 'criteria': ['Product Management', 'Market Research', 'Agile Methodologies', 'Figma'], 'datePosted': '2024-09-22', 'applications': 98, 'shortlisted': 20, 'status': 'active'},
-    {'id': 5, 'title': 'Digital Marketing Executive', 'field': 'Marketing', 'company': 'Growth Sparks', 'location': 'Mumbai', 'job_type': 'Hybrid', 'eligibility': 'Any degree, 2+ years of relevant experience.', 'criteria': ['SEO', 'SEM', 'Content Creation', 'Social Media Marketing'], 'datePosted': '2024-09-23', 'applications': 110, 'shortlisted': 15, 'status': 'active'}
-]
+# --- SQLite Database Functions ---
+def init_db():
+    """Initializes the SQLite databases and creates the tables if they don't exist."""
+    # Users database
+    conn_users = sqlite3.connect('users.db')
+    cursor_users = conn_users.cursor()
+    cursor_users.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL,
+            gender TEXT,
+            company TEXT,
+            designation TEXT,
+            bio TEXT,
+            contact_number TEXT,
+            linkedin TEXT
+        );
+    """)
+    conn_users.commit()
+    conn_users.close()
 
-# Simulated student profiles for recruiter view
-simulated_students = [
-    {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': random.randint(75, 95), 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': random.randint(70,95), 'Problem-Solving': random.randint(80,99), 'Teamwork': random.randint(65,90)}},
-    {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': random.randint(70, 90), 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': random.randint(75,99), 'Problem-Solving': random.randint(70,90), 'Teamwork': random.randint(80,95)}},
-    {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': random.randint(60, 85), 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': random.randint(60,85), 'Problem-Solving': random.randint(65,90), 'Teamwork': random.randint(70,95)}},
-]
+    # Jobs database
+    conn_jobs = sqlite3.connect('jobs.db')
+    cursor_jobs = conn_jobs.cursor()
+    cursor_jobs.execute("""
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            company TEXT NOT NULL,
+            location TEXT,
+            job_type TEXT,
+            eligibility TEXT,
+            criteria TEXT NOT NULL,
+            date_posted TEXT,
+            applications INTEGER
+        );
+    """)
+    conn_jobs.commit()
+    conn_jobs.close()
+
+def add_user(user_data):
+    """Adds a new user to the database."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    hashed_password = pbkdf2_sha256.hash(user_data['password'])
+    
+    try:
+        cursor.execute(f"""
+            INSERT INTO users (name, email, password, role, gender, company, designation, bio, contact_number, linkedin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_data['name'], 
+            user_data['email'], 
+            hashed_password, 
+            user_data['role'], 
+            user_data['gender'], 
+            user_data.get('company'), 
+            user_data.get('designation'), 
+            user_data.get('bio'), 
+            user_data.get('contact_number'), 
+            user_data.get('linkedin')
+        ))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        st.error("Error: An account with this email already exists.")
+        return False
+    finally:
+        conn.close()
+
+def authenticate_user(email, password):
+    """Authenticates a user from the database and returns their data if successful."""
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE email=?", (email,))
+    user_record = cursor.fetchone()
+    conn.close()
+    
+    if user_record and pbkdf2_sha256.verify(password, user_record[3]):
+        user_data = {
+            'id': user_record[0],
+            'name': user_record[1],
+            'email': user_record[2],
+            'password': user_record[3],
+            'role': user_record[4],
+            'gender': user_record[5],
+            'company': user_record[6],
+            'designation': user_record[7],
+            'bio': user_record[8],
+            'contact_number': user_record[9],
+            'linkedin': user_record[10]
+        }
+        return user_data
+    return None
+
+def add_job(job_data):
+    """Adds a new job to the database."""
+    conn = sqlite3.connect('jobs.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO jobs (title, company, location, job_type, eligibility, criteria, date_posted, applications)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        job_data['title'],
+        job_data['company'],
+        job_data.get('location', ''),
+        job_data.get('job_type', ''),
+        job_data.get('eligibility', ''),
+        str(job_data.get('criteria', [])), # Store list as a string
+        job_data.get('date_posted', ''),
+        job_data.get('applications', 0)
+    ))
+    conn.commit()
+    conn.close()
+
+def get_job_listings():
+    """Fetches all jobs from the database."""
+    conn = sqlite3.connect('jobs.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM jobs")
+    job_records = cursor.fetchall()
+    conn.close()
+    
+    # Convert records to a list of dictionaries
+    jobs = []
+    for job in job_records:
+        jobs.append({
+            'id': job[0],
+            'title': job[1],
+            'company': job[2],
+            'location': job[3],
+            'job_type': job[4],
+            'eligibility': job[5],
+            'criteria': eval(job[6]), # Convert criteria string back to list
+            'datePosted': job[7],
+            'applications': job[8],
+            'shortlisted': random.randint(0, job[8]) # Simulated value
+        })
+    return jobs
 
 # --- Helper Functions ---
 def get_verdict_html(verdict):
@@ -126,13 +260,14 @@ def get_ats_html(is_friendly):
 
 # --- Main Page Functions ---
 def get_job_info_page(job_id):
+    job_listings = get_job_listings()
     job = next((item for item in job_listings if item['id'] == job_id), None)
     if not job:
         st.error("Job not found.")
         return
         
     st.title(job['title'])
-    st.markdown(f"**Company:** {job['company']} | **Location:** {job['location']} | **Job Type:** {job['job_type']}")
+    st.markdown(f"Company: {job['company']} | Location: {job['location']} | Job Type: {job['job_type']}")
     st.markdown("---")
     
     st.subheader("Role & Information")
@@ -153,15 +288,21 @@ def get_job_info_page(job_id):
     
     if uploaded_file:
         st.success("Resume uploaded successfully! Analyzing...")
-        score = random.randint(50, 95)
-        matched_skills = random.sample(job['criteria'], k=min(len(job['criteria']) - 2, 4))
-        missing_skills = [skill for skill in job['criteria'] if skill not in matched_skills]
+        
+        with st.spinner("Analyzing your resume with the AI engine..."):
+            analysis_result = analyze_uploaded_files(uploaded_file, job['criteria'])
+        
+        score = analysis_result['score']
+        matched_skills = analysis_result['matched_skills']
+        missing_skills = analysis_result['missing_skills']
+        feedback = analysis_result['feedback']
         
         st.markdown(f"#### Your Resume Match Score: **{score}%**")
         st.progress(score / 100)
         
         st.markdown("---")
         st.subheader("Personalized Feedback for this Role")
+        st.info(feedback)
         
         col1, col2 = st.columns(2)
         with col1:
@@ -174,11 +315,6 @@ def get_job_info_page(job_id):
             skills_html = "".join([f'<span class="skill-missing">{skill}</span>' for skill in missing_skills])
             st.markdown(f'<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">{skills_html}</div>', unsafe_allow_html=True)
         
-        st.subheader("Your Action Plan")
-        st.info("Here are some steps to bridge your skill gaps and boost your score:")
-        for skill in missing_skills:
-            st.markdown(f"- **{skill}:** Consider completing an online certification or a personal project focused on this technology.")
-
         st.markdown("---")
         col_enroll, col_back = st.columns(2)
         if col_enroll.button("Enroll for this Job", use_container_width=True, type="primary"):
@@ -220,6 +356,11 @@ def recruiter_dashboard():
     st.markdown("### Welcome, Recruiter!")
     st.markdown("---")
     
+    job_listings = get_job_listings()
+    total_apps = sum(job['applications'] for job in job_listings) if job_listings else 0
+    total_shortlisted = sum(job['shortlisted'] for job in job_listings) if job_listings else 0
+    avg_score = round(random.randint(70,90))
+
     st.subheader("Key Metrics")
     st.markdown("Here's a quick overview of our current hiring pipeline and student performance.")
     
@@ -229,17 +370,14 @@ def recruiter_dashboard():
             st.markdown("<p class='metric-card'>🏢 Active Jobs<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(len(job_listings)), unsafe_allow_html=True)
             st.caption("Total jobs currently posted.")
     with col2:
-        total_apps = sum(job['applications'] for job in job_listings)
         with st.container(border=True):
             st.markdown("<p class='metric-card'>✉️ Total Applications<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(f"{total_apps:,}"), unsafe_allow_html=True)
             st.caption("Total resumes received across all jobs.")
     with col3:
-        total_shortlisted = sum(job['shortlisted'] for job in job_listings)
         with st.container(border=True):
             st.markdown("<p class='metric-card'>🏅 Shortlisted<br><h2 style='font-family: Roboto Mono;'>{}</h2></p>".format(total_shortlisted), unsafe_allow_html=True)
             st.caption("Candidates forwarded for interviews.")
     with col4:
-        avg_score = round(random.randint(70,90))
         with st.container(border=True):
             st.markdown("<p class='metric-card'>⭐ Avg. Score<br><h2 style='font-family: Roboto Mono;'>{}%</h2></p>".format(avg_score), unsafe_allow_html=True)
             st.caption("Average resume relevance score.")
@@ -249,11 +387,66 @@ def recruiter_dashboard():
     with st.container(border=True):
         st.markdown("Upload a new Job Description to analyze student resumes and find the best fit.")
         uploaded_file = st.file_uploader("Upload JD (PDF, DOCX)", type=['pdf', 'docx'])
-        st.button("Post Job", type="primary", use_container_width=True)
+        
+        if st.button("Post Job", type="primary", use_container_width=True):
+            if uploaded_file:
+                # Extract text from the uploaded file
+                text = ""
+                try:
+                    if uploaded_file.name.endswith('.docx'):
+                        doc = Document(io.BytesIO(uploaded_file.getvalue()))
+                        text = "\n".join([para.text for para in doc.paragraphs])
+                    elif uploaded_file.name.endswith('.pdf'):
+                        with pdfplumber.open(io.BytesIO(uploaded_file.getvalue())) as pdf:
+                            text = "\n".join([page.extract_text() for page in pdf.pages])
+                    else:
+                        st.error("Unsupported file type for JD parsing. Please use DOCX or PDF.")
+                        return
+
+                    # Simple JD parsing logic to extract key details
+                    title_match = re.search(r"Job Title:\s*(.*)", text, re.IGNORECASE)
+                    title = title_match.group(1).strip() if title_match else uploaded_file.name.replace('.docx', '').replace('.pdf', '').strip()
+                    
+                    company_match = re.search(r"Company:\s*(.*)", text, re.IGNORECASE)
+                    company = company_match.group(1).strip() if company_match else st.session_state.user_data.get('company', 'Unknown Company')
+
+                    # Simple skills extraction
+                    skills_match = re.search(r"(skills|requirements|criteria|qualifications):(.*)", text, re.IGNORECASE | re.DOTALL)
+                    if skills_match:
+                        skills_text = skills_match.group(2)
+                        criteria = [s.strip() for s in skills_text.split(',')]
+                    else:
+                        criteria = ["No specific skills found"]
+                    
+                    job_data = {
+                        'title': title,
+                        'company': company,
+                        'location': 'N/A', # Placeholder for demo
+                        'job_type': 'N/A', # Placeholder for demo
+                        'eligibility': 'N/A', # Placeholder for demo
+                        'criteria': criteria,
+                        'date_posted': pd.Timestamp.now().strftime('%Y-%m-%d'),
+                        'applications': random.randint(10, 50)
+                    }
+                    
+                    add_job(job_data)
+                    st.success(f"Job '{title}' posted successfully!")
+                    st.rerun()
+
+                except UnicodeDecodeError:
+                    st.error("There was a character encoding error. Please try a different file.")
+                except Exception as e:
+                    st.error(f"An unexpected error occurred during file processing: {e}")
+            else:
+                st.warning("Please upload a job description file first.")
         
     st.markdown("---")
     st.subheader("Your Active Jobs")
-    st.dataframe(pd.DataFrame(job_listings), use_container_width=True, hide_index=True)
+    job_listings_df = pd.DataFrame(job_listings)
+    if not job_listings_df.empty:
+        st.dataframe(job_listings_df[['title', 'company', 'location', 'datePosted', 'applications', 'shortlisted']], use_container_width=True, hide_index=True)
+    else:
+        st.info("No jobs posted yet.")
 
 def student_job_listings_page():
     st.title("Open Job Opportunities 🏢")
@@ -261,6 +454,7 @@ def student_job_listings_page():
     st.markdown("---")
     
     st.sidebar.markdown("### 🔎 Job Filters")
+    job_listings = get_job_listings()
     job_types = st.sidebar.multiselect("Job Type", ["Remote", "Hybrid", "On-site"])
     job_fields = st.sidebar.multiselect("Desired Field", ["Data Science", "Full Stack Development", "Cloud Engineering", "Product Management", "Marketing"])
     search_query = st.sidebar.text_input("Search by Title or Company")
@@ -294,27 +488,29 @@ def student_profile_page():
     st.title("My Profile 👤")
     st.markdown("### Edit and manage your personal details.")
     st.markdown("---")
+    
+    user_data = authenticate_user(st.session_state.user_data['email'], st.session_state.user_data['password'])
 
     with st.form("student_profile_form"):
         st.subheader("Personal Information")
-        name = st.text_input("Full Name", value=st.session_state.user_data['name'])
-        email = st.text_input("Email Address", value=st.session_state.user_data['email'])
-        contact_number = st.text_input("Contact Number", value=st.session_state.user_data.get('contact_number', ''))
-        linkedin = st.text_input("LinkedIn Profile URL", value=st.session_state.user_data.get('linkedin', ''))
+        name = st.text_input("Full Name", value=user_data['name'])
+        email = st.text_input("Email Address", value=user_data['email'])
+        contact_number = st.text_input("Contact Number", value=user_data.get('contact_number', ''))
+        linkedin = st.text_input("LinkedIn Profile URL", value=user_data.get('linkedin', ''))
         
         st.subheader("Professional Bio")
-        bio = st.text_area("Write a short professional bio", value=st.session_state.user_data.get('bio', ''), height=150)
+        bio = st.text_area("Write a short professional bio", value=user_data.get('bio', ''), height=150)
         
         save_button = st.form_submit_button("Save Changes", type="primary", use_container_width=True)
 
     if save_button:
-        st.session_state.user_data.update({
-            'name': name,
-            'email': email,
-            'contact_number': contact_number,
-            'linkedin': linkedin,
-            'bio': bio
-        })
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users SET name=?, email=?, contact_number=?, linkedin=?, bio=? WHERE id=?
+        """, (name, email, contact_number, linkedin, bio, user_data['id']))
+        conn.commit()
+        conn.close()
         st.success("Profile updated successfully! ✅")
     
     st.markdown("---")
@@ -324,8 +520,14 @@ def student_profile_page():
     
     if uploaded_resume:
         st.success("Resume uploaded! Analyzing...")
-        score = random.randint(70, 99)
-        ats_friendly = random.choice([True, False, True])
+        
+        generic_skills = ["Python", "JavaScript", "SQL", "Machine Learning", "Data Analysis", "Cloud Computing", "Project Management", "Agile", "API", "Web Development", "UI/UX"]
+        
+        with st.spinner("Analyzing your resume with the AI engine..."):
+            analysis_result = analyze_uploaded_files(uploaded_resume, generic_skills)
+        
+        score = analysis_result['score']
+        ats_friendly = score > 60
         
         st.markdown(f"#### Your Overall Resume Score: **{score}%**")
         st.progress(score / 100)
@@ -353,31 +555,38 @@ def recruiter_profile_page():
     st.markdown("### Edit and manage your personal and company details.")
     st.markdown("---")
     
+    user_data = authenticate_user(st.session_state.user_data['email'], st.session_state.user_data['password'])
+
     with st.form("recruiter_profile_form"):
         st.subheader("Personal & Company Information")
-        name = st.text_input("Full Name", value=st.session_state.user_data['name'])
-        email = st.text_input("Email Address", value=st.session_state.user_data['email'])
-        company = st.text_input("Company Name", value=st.session_state.user_data.get('company', ''))
-        designation = st.text_input("Designation", value=st.session_state.user_data.get('designation', ''))
-        linkedin = st.text_input("LinkedIn Profile URL", value=st.session_state.user_data.get('linkedin', ''))
+        name = st.text_input("Full Name", value=user_data['name'])
+        email = st.text_input("Email Address", value=user_data['email'])
+        company = st.text_input("Company Name", value=user_data.get('company', ''))
+        designation = st.text_input("Designation", value=user_data.get('designation', ''))
+        linkedin = st.text_input("LinkedIn Profile URL", value=user_data.get('linkedin', ''))
         
         save_button = st.form_submit_button("Save Changes", type="primary", use_container_width=True)
 
     if save_button:
-        st.session_state.user_data.update({
-            'name': name,
-            'email': email,
-            'company': company,
-            'designation': designation,
-            'linkedin': linkedin
-        })
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users SET name=?, email=?, company=?, designation=?, linkedin=? WHERE id=?
+        """, (name, email, company, designation, linkedin, user_data['id']))
+        conn.commit()
+        conn.close()
         st.success("Profile updated successfully! ✅")
 
-# --- Recruiter "Explore" Page ---
 def explore_students_page():
     st.title("Explore Students 🚀")
     st.markdown("### Discover and filter potential candidates.")
     st.markdown("---")
+
+    simulated_students = [
+        {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': random.randint(75, 95), 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': random.randint(70,95), 'Problem-Solving': random.randint(80,99), 'Teamwork': random.randint(65,90)}},
+        {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': random.randint(70, 90), 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': random.randint(75,99), 'Problem-Solving': random.randint(70,90), 'Teamwork': random.randint(80,95)}},
+        {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': random.randint(60, 85), 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': random.randint(60,85), 'Problem-Solving': random.randint(65,90), 'Teamwork': random.randint(70,95)}},
+    ]
 
     for student in simulated_students:
         with st.container(border=True):
@@ -395,8 +604,14 @@ def explore_students_page():
                 st.session_state.selected_student_id = student['id']
                 st.rerun()
 
-# --- Recruiter "View Student Profile" Page ---
 def view_student_profile_page():
+    job_listings = get_job_listings()
+    simulated_students = [
+        {'id': 1, 'name': 'Rahul Sharma', 'gender': 'Male', 'email': 'rahul@example.com', 'contact_number': '1234567890', 'bio': 'Aspiring Data Scientist with a strong foundation in Python and SQL.', 'job_title': 'Senior Data Scientist', 'job_id': 1, 'score': random.randint(75, 95), 'ats_friendly': True, 'matched_skills': ['Python', 'SQL', 'Machine Learning'], 'missing_skills': ['TensorFlow', 'AWS'], 'soft_skills': {'Communication': random.randint(70,95), 'Problem-Solving': random.randint(80,99), 'Teamwork': random.randint(65,90)}},
+        {'id': 2, 'name': 'Priya Patel', 'gender': 'Female', 'email': 'priya@example.com', 'contact_number': '0987654321', 'bio': 'Full Stack Developer with expertise in React, Node.js, and MongoDB.', 'job_title': 'Full Stack Developer', 'job_id': 2, 'score': random.randint(70, 90), 'ats_friendly': True, 'matched_skills': ['React', 'Node.js', 'MongoDB'], 'missing_skills': ['Redis'], 'soft_skills': {'Communication': random.randint(75,99), 'Problem-Solving': random.randint(70,90), 'Teamwork': random.randint(80,95)}},
+        {'id': 3, 'name': 'Amit Kumar', 'gender': 'Male', 'email': 'amit@example.com', 'contact_number': '1122334455', 'bio': 'Recent graduate passionate about cloud computing and DevOps.', 'job_title': 'Cloud Engineer', 'job_id': 3, 'score': random.randint(60, 85), 'ats_friendly': False, 'matched_skills': ['AWS', 'CI/CD'], 'missing_skills': ['Terraform', 'Kubernetes'], 'soft_skills': {'Communication': random.randint(60,85), 'Problem-Solving': random.randint(65,90), 'Teamwork': random.randint(70,95)}},
+    ]
+
     student = next((s for s in simulated_students if s['id'] == st.session_state.selected_student_id), None)
     job = next((j for j in job_listings if j['id'] == student['job_id']), None)
 
@@ -491,9 +706,11 @@ def show_login_page():
         login_button = st.form_submit_button("Log In", type="primary", use_container_width=True)
     
     if login_button:
-        if st.session_state.get('user_data') and email == st.session_state.user_data['email'] and password == st.session_state.user_data['password']:
+        user_data = authenticate_user(email, password)
+        if user_data:
             st.session_state.logged_in = True
-            st.session_state.user_role = st.session_state.user_data['role']
+            st.session_state.user_role = user_data['role']
+            st.session_state.user_data = user_data
             st.success("Login successful! Redirecting to your dashboard...")
             st.rerun()
         else:
@@ -520,9 +737,16 @@ def show_forgot_password_page():
         send_otp_button = st.form_submit_button("Send OTP", type="primary")
         
     if send_otp_button:
-        if contact_info == st.session_state.user_data['email'] or contact_info == st.session_state.user_data.get('contact_number'):
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email=?", (contact_info,))
+        user_record = cursor.fetchone()
+        conn.close()
+
+        if user_record:
             otp = random.randint(100000, 999999)
             st.session_state.otp = otp
+            st.session_state.forgot_password_email = contact_info
             st.success(f"OTP sent to {contact_info}! Your OTP is: **{otp}** (Simulated)")
             st.session_state.login_state = 'verify_otp'
             st.rerun()
@@ -532,14 +756,14 @@ def show_forgot_password_page():
 def show_verify_otp_page():
     st.title("Verify OTP 🔐")
     st.markdown("---")
-    st.info(f"An OTP has been sent. Please enter it below.")
+    st.info(f"An OTP has been sent to {st.session_state.get('forgot_password_email', 'your email')}. Please enter it below.")
     
     with st.form("verify_otp_form"):
         otp_input = st.text_input("Enter OTP", type="password")
         verify_button = st.form_submit_button("Verify", type="primary")
         
     if verify_button:
-        if otp_input == str(st.session_state.otp):
+        if otp_input == str(st.session_state.get('otp')):
             st.success("OTP verified successfully!")
             st.session_state.login_state = 'reset_password'
             st.rerun()
@@ -558,7 +782,12 @@ def show_reset_password_page():
         
     if reset_button:
         if new_password == confirm_password and new_password:
-            st.session_state.user_data['password'] = new_password
+            conn = sqlite3.connect('users.db')
+            cursor = conn.cursor()
+            hashed_password = pbkdf2_sha256.hash(new_password)
+            cursor.execute("UPDATE users SET password=? WHERE email=?", (hashed_password, st.session_state.forgot_password_email))
+            conn.commit()
+            conn.close()
             st.success("Password reset successfully! You can now log in with your new password.")
             st.session_state.login_state = 'login'
             st.rerun()
@@ -596,7 +825,7 @@ def show_signup_page():
 
     if signup_button:
         if name and email and password:
-            st.session_state.user_data = {
+            user_data = {
                 'name': name,
                 'email': email,
                 'password': password,
@@ -604,14 +833,14 @@ def show_signup_page():
                 'gender': gender
             }
             if role == "Recruiter":
-                st.session_state.user_data.update({'company': company, 'designation': designation, 'linkedin': linkedin})
+                user_data.update({'company': company, 'designation': designation, 'linkedin': linkedin})
             else:
-                st.session_state.user_data.update({'bio': bio, 'linkedin': linkedin, 'contact_number': contact_number})
+                user_data.update({'bio': bio, 'linkedin': linkedin, 'contact_number': contact_number})
             
-            st.success(f"Account for {role} created successfully! Redirecting to your dashboard...")
-            st.session_state.logged_in = True
-            st.session_state.user_role = role
-            st.rerun()
+            if add_user(user_data):
+                st.success(f"Account for {role} created successfully! Please log in.")
+                st.session_state.login_state = 'login'
+                st.rerun()
         else:
             st.error("Please fill in all required fields.")
     
@@ -627,7 +856,7 @@ def show_signup_page():
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'login_state' not in st.session_state:
-    st.session_state.login_state = 'signup' # 'signup', 'login', 'forgot_password', 'verify_otp', 'reset_password'
+    st.session_state.login_state = 'signup'
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'user_data' not in st.session_state:
@@ -645,7 +874,8 @@ if 'live_chat' not in st.session_state:
 if 'interview_schedule' not in st.session_state:
     st.session_state.interview_schedule = []
 
-# Sidebar for navigation
+init_db()
+
 st.sidebar.title("AI Recruitment Matcher")
 st.sidebar.markdown("---")
 
@@ -659,7 +889,7 @@ if st.session_state.logged_in:
     
     if st.session_state.user_role == "Recruiter":
         st.sidebar.markdown("---")
-        recruiter_nav = st.sidebar.radio("Navigation", ["Dashboard", "My Profile", "Explore Students", "Live Sessions", "Manage Q&A"], key="recruiter_nav")
+        recruiter_nav = st.sidebar.radio("Navigation", ["Dashboard", "My Profile", "Explore Students"], key="recruiter_nav")
         
         if recruiter_nav == "Dashboard":
             recruiter_dashboard()
@@ -667,17 +897,13 @@ if st.session_state.logged_in:
             recruiter_profile_page()
         elif recruiter_nav == "Explore Students":
             explore_students_page()
-        elif recruiter_nav == "Live Sessions":
-            recruiter_live_sessions()
-        elif recruiter_nav == "Manage Q&A":
-            manage_qa_page()
         
         if st.session_state.recruiter_page == "view_student_profile":
             view_student_profile_page()
 
     elif st.session_state.user_role == "Student":
         st.sidebar.markdown("---")
-        student_nav = st.sidebar.radio("Navigation", ["Job Opportunities", "My Profile", "Live Sessions", "My Interviews"], key="student_nav")
+        student_nav = st.sidebar.radio("Navigation", ["Job Opportunities", "My Profile"], key="student_nav")
         
         if st.session_state.student_notifications:
             st.subheader("Your Notifications 🔔")
@@ -693,13 +919,6 @@ if st.session_state.logged_in:
                 get_job_info_page(st.session_state.selected_job_id)
         elif student_nav == "My Profile":
             student_profile_page()
-        elif student_nav == "Live Sessions":
-            if st.session_state.student_page == "live_sessions":
-                student_live_sessions()
-            elif st.session_state.student_page == "live_chat":
-                live_chat_page(st.session_state.current_session_id)
-        elif student_nav == "My Interviews":
-            student_interviews_page()
             
 else:
     if st.session_state.login_state == 'login':
@@ -710,5 +929,5 @@ else:
         show_verify_otp_page()
     elif st.session_state.login_state == 'reset_password':
         show_reset_password_page()
-    else: # Default is signup page
+    else:
         show_signup_page()
